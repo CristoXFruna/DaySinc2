@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:layout_marginTop="32dp"
-        android:text="Racha: 0 días"
+        android:text=" Racha: 0 días"
         android:textColor="#FF9800"
         android:textSize="22sp"
         android:textStyle="bold"

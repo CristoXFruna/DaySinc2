@@ -1,5 +1,5 @@
 package com.example.daysinc;
-
+import com.example.daysinc.R;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -30,7 +30,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Asegúrate de que apunte a activity_main
         setContentView(R.layout.activity_main);
 
         tvStreak = findViewById(R.id.tvStreak);

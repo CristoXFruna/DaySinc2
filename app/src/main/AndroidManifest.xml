@@ -14,8 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
 
+        <!-- Pantalla de Inicio (Inicia primero) -->
         <activity
-            android:name=".MainActivity"
+            android:name=".StartActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,6 +24,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Pantalla de Login -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false" />
+
+        <!-- Panel Principal de Tareas -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
+
+        <!-- Receptor de Alarmas -->
         <receiver
             android:name=".models.AlarmReceiver"
             android:enabled="true"
