@@ -21,6 +21,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Botón para probar notificación -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnTestNotification"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:text=" Probar Alarma"
+        android:textColor="#64B5F6"
+        app:layout_constraintBottom_toBottomOf="@id/tvStreak"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tvStreak" />
+
     <TextView
         android:id="@+id/tvNextTask"
         android:layout_width="wrap_content"

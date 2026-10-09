@@ -26,6 +26,7 @@ public class AlarmReceiver extends BroadcastReceiver {
                     "Recordatorios de Tareas",
                     NotificationManager.IMPORTANCE_HIGH
             );
+            channel.setDescription("Canal de alertas de DaySinc");
             if (notificationManager != null) {
                 notificationManager.createNotificationChannel(channel);
             }
@@ -33,9 +34,10 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                .setContentTitle("DaySinc - Recordatorio")
+                .setContentTitle("DaySinc - Alerta  ")
                 .setContentText(title)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setAutoCancel(true);
 
         if (notificationManager != null) {

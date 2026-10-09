@@ -38,7 +38,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Sincroniza tu rutina, mantén tu racha 🔥"
+        android:text="Sincroniza tu rutina, mantén tu racha "
         android:textColor="#B0BEC5"
         android:textSize="16sp"
         app:layout_constraintBottom_toTopOf="@id/btnGoToLogin"

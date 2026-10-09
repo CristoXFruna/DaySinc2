@@ -12,19 +12,25 @@ public class Task {
     private String category;
     private long timestamp;
     private boolean isCompleted;
+    private String userId;
 
-    public Task(String title, String category, long timestamp, boolean isCompleted) {
+    public Task(String title, String category, long timestamp, boolean isCompleted, String userId) {
         this.title = title;
         this.category = category;
         this.timestamp = timestamp;
         this.isCompleted = isCompleted;
+        this.userId = userId;
     }
 
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
+
     public String getTitle() { return title; }
     public String getCategory() { return category; }
     public long getTimestamp() { return timestamp; }
     public boolean isCompleted() { return isCompleted; }
     public void setCompleted(boolean completed) { isCompleted = completed; }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 }

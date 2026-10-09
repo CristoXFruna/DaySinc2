@@ -9,7 +9,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-// IMPORTANTE: Este import soluciona 'Cannot resolve symbol item_task' y las IDs
 import com.example.daysinc.R;
 
 import java.text.SimpleDateFormat;
@@ -19,7 +18,6 @@ import java.util.List;
 import java.util.Locale;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
-    // ... resto del código ...
 
     private List<Task> tasks = new ArrayList<>();
     private OnTaskClickListener listener;
