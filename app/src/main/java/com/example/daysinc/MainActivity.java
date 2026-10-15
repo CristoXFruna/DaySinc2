@@ -302,4 +302,16 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
         sendBroadcast(intent);
     }
+    private void sendEmailNotification(String userEmail, String taskTitle) {
+        Intent intent = new Intent(Intent.ACTION_SENDTO);
+        intent.setData(android.net.Uri.parse("mailto:" + userEmail));
+        intent.putExtra(Intent.EXTRA_SUBJECT, "🔔 Recordatorio de Actividad - DaySinc");
+        intent.putExtra(Intent.EXTRA_TEXT, "Hola, te recordamos que tienes pendiente tu actividad: '" + taskTitle + "'. ¡No rompas tu racha!");
+
+        try {
+            startActivity(Intent.createChooser(intent, "Enviar correo con:"));
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "No hay cliente de correo instalado", Toast.LENGTH_SHORT).show();
+        }
+    }
 }
