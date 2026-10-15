@@ -10,6 +10,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -32,6 +36,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 
@@ -40,8 +45,35 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvStreak, tvNextTask;
     private RecyclerView recyclerView;
     private TaskAdapter adapter;
-    private AppDatabase db;
+    private DatabaseHelper dbHelper;
     private String currentUserId = "invitado";
+
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private float acceleration;
+    private float currentAcceleration;
+    private float lastAcceleration;
+
+    private final SensorEventListener sensorListener = new SensorEventListener() {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+            lastAcceleration = currentAcceleration;
+            currentAcceleration = (float) Math.sqrt((double) (x * x + y * y + z * z));
+            float delta = currentAcceleration - lastAcceleration;
+            acceleration = acceleration * 0.9f + delta;
+
+            if (acceleration > 12) {
+                Toast.makeText(MainActivity.this, "¡Teléfono agitado! Recargando tareas...", Toast.LENGTH_SHORT).show();
+                loadTasks();
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +83,14 @@ public class MainActivity extends AppCompatActivity {
         if (getIntent().hasExtra("username")) {
             currentUserId = getIntent().getStringExtra("username");
         }
+
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        }
+        acceleration = 10f;
+        currentAcceleration = SensorManager.GRAVITY_EARTH;
+        lastAcceleration = SensorManager.GRAVITY_EARTH;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -64,12 +104,11 @@ public class MainActivity extends AppCompatActivity {
         FloatingActionButton fabAddTask = findViewById(R.id.fabAddTask);
         MaterialButton btnTestNotification = findViewById(R.id.btnTestNotification);
 
-        db = AppDatabase.getInstance(this);
+        dbHelper = new DatabaseHelper(this);
 
         SharedPreferences prefs = getSharedPreferences("DaySincPrefs", MODE_PRIVATE);
         int userStreak = prefs.getInt("user_streak_" + currentUserId, 0);
         tvStreak.setText("🔥 Racha: " + userStreak + " días (" + currentUserId + ")");
-
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -81,8 +120,8 @@ public class MainActivity extends AppCompatActivity {
                         .setPositiveButton("Sí, la completé", (dialog, which) -> {
                             task.setCompleted(true);
                             Executors.newSingleThreadExecutor().execute(() -> {
-                                db.taskDao().update(task);
-                                updateNextTask();
+                                dbHelper.updateTaskState(task.getId(), true);
+                                runOnUiThread(this::updateNextTask);
                             });
 
                             int updatedStreak = prefs.getInt("user_streak_" + currentUserId, 0) + 1;
@@ -102,8 +141,8 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 task.setCompleted(false);
                 Executors.newSingleThreadExecutor().execute(() -> {
-                    db.taskDao().update(task);
-                    updateNextTask();
+                    dbHelper.updateTaskState(task.getId(), false);
+                    runOnUiThread(this::updateNextTask);
                 });
             }
         });
@@ -119,6 +158,22 @@ public class MainActivity extends AppCompatActivity {
         });
 
         loadTasks();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (sensorManager != null && accelerometer != null) {
+            sensorManager.registerListener(sensorListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(sensorListener);
+        }
     }
 
     private void showCreateTaskDialog() {
@@ -154,8 +209,9 @@ public class MainActivity extends AppCompatActivity {
                 Task newTask = new Task(title, "Personal", cal.getTimeInMillis(), false, currentUserId);
 
                 Executors.newSingleThreadExecutor().execute(() -> {
-                    db.taskDao().insert(newTask);
+                    dbHelper.insertTask(newTask);
                     scheduleAlarm(newTask.getTitle(), cal.getTimeInMillis());
+                    runOnUiThread(this::loadTasks);
                 });
 
                 String timeStr = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minuteOfHour);
@@ -171,9 +227,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadTasks() {
-        db.taskDao().getTasksByUser(currentUserId).observe(this, tasks -> {
-            adapter.setTasks(tasks);
-            updateNextTask();
+        Executors.newSingleThreadExecutor().execute(() -> {
+            List<Task> tasks = dbHelper.getTasksByUser(currentUserId);
+            runOnUiThread(() -> {
+                adapter.setTasks(tasks);
+                updateNextTask();
+            });
         });
     }
 
@@ -209,10 +268,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateNextTask() {
         Executors.newSingleThreadExecutor().execute(() -> {
-            Task nextTask = db.taskDao().getNextPendingTaskByUser(currentUserId);
+            List<Task> tasks = dbHelper.getTasksByUser(currentUserId);
+            Task nextTask = null;
+            for (Task t : tasks) {
+                if (!t.isCompleted()) {
+                    nextTask = t;
+                    break;
+                }
+            }
+            Task finalNextTask = nextTask;
             runOnUiThread(() -> {
-                if (nextTask != null) {
-                    tvNextTask.setText("Siguiente: " + nextTask.getTitle() + " (" + nextTask.getCategory() + ")");
+                if (finalNextTask != null) {
+                    tvNextTask.setText("Siguiente: " + finalNextTask.getTitle() + " (" + finalNextTask.getCategory() + ")");
                 } else {
                     tvNextTask.setText("Siguiente: Ninguna tarea pendiente");
                 }
@@ -225,7 +292,6 @@ public class MainActivity extends AppCompatActivity {
         prefs.edit().putInt("user_streak_" + currentUserId, newStreak).apply();
 
         tvStreak.setText("🔥 Racha: " + newStreak + " días (" + currentUserId + ")");
-
 
         prefs.edit().putInt("user_streak", newStreak).apply();
 
