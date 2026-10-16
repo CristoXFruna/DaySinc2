@@ -1,352 +1,365 @@
 package com.example.daysinc;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
-import android.appwidget.AppWidgetManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+import android.location.Location;
+import android.media.RingtoneManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import com.example.daysinc.models.AlarmReceiver;
-import com.example.daysinc.models.StreakWidgetProvider;
-import com.example.daysinc.models.Task;
-import com.example.daysinc.models.TaskAdapter;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import com.example.daysinc.adapters.TaskAdapter;
+import com.example.daysinc.models.Task;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.material.button.MaterialButton;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView tvStreak, tvNextTask;
-    private RecyclerView recyclerView;
-    private TaskAdapter adapter;
-    private DatabaseHelper dbHelper;
-    private String currentUserId = "invitado";
+    private RecyclerView rvTasks;
+    private TaskAdapter taskAdapter;
+    private List<Task> taskList;
+    private EditText etNewTask;
+    private TextView tvStreak;
+    private TextView tvNextTask;
+    private MaterialButton btnSelectTime;
 
-    private SensorManager sensorManager;
-    private Sensor accelerometer;
-    private float acceleration;
-    private float currentAcceleration;
-    private float lastAcceleration;
+    private Calendar selectedTimeCalendar;
+    private FusedLocationProviderClient fusedLocationClient;
 
-    private final SensorEventListener sensorListener = new SensorEventListener() {
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            float x = event.values[0];
-            float y = event.values[1];
-            float z = event.values[2];
-            lastAcceleration = currentAcceleration;
-            currentAcceleration = (float) Math.sqrt((double) (x * x + y * y + z * z));
-            float delta = currentAcceleration - lastAcceleration;
-            acceleration = acceleration * 0.9f + delta;
-
-            if (acceleration > 12) {
-                Toast.makeText(MainActivity.this, "¡Teléfono agitado! Recargando tareas...", Toast.LENGTH_SHORT).show();
-                loadTasks();
-            }
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-    };
-
+    private static final int PERMISSION_REQUEST_CODE = 2002;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if (getIntent().hasExtra("username")) {
-            currentUserId = getIntent().getStringExtra("username");
-        }
+        createNotificationChannel();
+
+        requestPermissions();
 
         tvStreak = findViewById(R.id.tvStreak);
         tvNextTask = findViewById(R.id.tvNextTask);
-        recyclerView = findViewById(R.id.recyclerViewTasks);
-        FloatingActionButton fabAddTask = findViewById(R.id.fabAddTask);
+        etNewTask = findViewById(R.id.etNewTask);
+        rvTasks = findViewById(R.id.rvTasks);
+        btnSelectTime = findViewById(R.id.btnSelectTime);
+
+        MaterialButton btnAddTask = findViewById(R.id.btnAddTask);
+        MaterialButton btnOpenMap = findViewById(R.id.btnOpenMap);
+        MaterialButton btnSendEmail = findViewById(R.id.btnSendEmail);
         MaterialButton btnTestNotification = findViewById(R.id.btnTestNotification);
 
-        dbHelper = new DatabaseHelper(this);
-        SharedPreferences prefs = getSharedPreferences("DaySincPrefs", MODE_PRIVATE);
-
-        if (currentUserId == null || currentUserId.equals("invitado") || currentUserId.isEmpty()) {
-            tvStreak.setText("👤 Inicia sesión para ver tu racha");
-        } else {
-            int userStreak = prefs.getInt("user_streak_" + currentUserId, 0);
-            tvStreak.setText("🔥 Racha: " + userStreak + " días (" + currentUserId + ")");
-        }
-
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        adapter = new TaskAdapter((task, isChecked) -> {
-            if (isChecked) {
-                new AlertDialog.Builder(this)
-                        .setTitle("¿Completaste esta tarea?")
-                        .setMessage("¿Confirmas que terminaste: '" + task.getTitle() + "'?")
-                        .setPositiveButton("Sí, la completé", (dialog, which) -> {
-                            task.setCompleted(true);
-                            Executors.newSingleThreadExecutor().execute(() -> {
-                                dbHelper.updateTaskState(task.getId(), true);
-                                runOnUiThread(this::updateNextTask);
-                            });
-
-                            checkAndUpdateDailyStreak();
-
-                        })
-                        .setNegativeButton("Aún no", (dialog, which) -> {
-                            task.setCompleted(false);
-                            adapter.notifyDataSetChanged();
-                        })
-                        .setOnCancelListener(dialog -> {
-                            task.setCompleted(false);
-                            adapter.notifyDataSetChanged();
-                        })
-                        .show();
-            } else {
-                task.setCompleted(false);
-                Executors.newSingleThreadExecutor().execute(() -> {
-                    dbHelper.updateTaskState(task.getId(), false);
-                    runOnUiThread(this::updateNextTask);
-                });
-            }
+        taskList = new ArrayList<>();
+        taskAdapter = new TaskAdapter(taskList, (task, position, targetState) -> {
+            verifyAndChangeTaskState(task, position, targetState);
         });
 
-        recyclerView.setAdapter(adapter);
-
-
-        fabAddTask.setOnClickListener(v -> showCreateTaskDialog());
-
-        btnTestNotification.setOnClickListener(v -> {
-            long triggerAt = System.currentTimeMillis() + 5000;
-            scheduleAlarm("🔔 Notificación de Prueba DaySinc", triggerAt);
-            Toast.makeText(this, "Prueba programada en 5 segundos...", Toast.LENGTH_SHORT).show();
-        });
-
-        loadTasks();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (sensorManager != null && accelerometer != null) {
-            sensorManager.registerListener(sensorListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        if (rvTasks != null) {
+            rvTasks.setLayoutManager(new LinearLayoutManager(this));
+            rvTasks.setAdapter(taskAdapter);
         }
-    }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(sensorListener);
+        btnSelectTime.setOnClickListener(v -> showTimePickerDialog());
+
+        if (btnAddTask != null) {
+            btnAddTask.setOnClickListener(v -> addTaskWithReminder());
         }
-    }
 
-    private void showCreateTaskDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Nueva Tarea para " + currentUserId);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        final EditText etTitle = new EditText(this);
-        etTitle.setHint("Nombre del quehacer (Ej: Estudiar)");
-        builder.setView(etTitle);
+        updateStreakLogic();
 
-        Calendar selectedCalendar = Calendar.getInstance();
-
-        builder.setPositiveButton("Elegir Hora", (dialog, which) -> {
-            String title = etTitle.getText().toString().trim();
-            if (title.isEmpty()) {
-                Toast.makeText(this, "Escribe un título", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            int hour = selectedCalendar.get(Calendar.HOUR_OF_DAY);
-            int minute = selectedCalendar.get(Calendar.MINUTE);
-
-            TimePickerDialog timePicker = new TimePickerDialog(this, (view, hourOfDay, minuteOfHour) -> {
-                Calendar cal = Calendar.getInstance();
-                cal.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                cal.set(Calendar.MINUTE, minuteOfHour);
-                cal.set(Calendar.SECOND, 0);
-
-                if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
-                    cal.add(Calendar.DAY_OF_YEAR, 1);
-                }
-
-                Task newTask = new Task(title, "Personal", cal.getTimeInMillis(), false, currentUserId);
-
-                Executors.newSingleThreadExecutor().execute(() -> {
-                    dbHelper.insertTask(newTask);
-                    scheduleAlarm(newTask.getTitle(), cal.getTimeInMillis());
-                    runOnUiThread(this::loadTasks);
-                });
-
-                String timeStr = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minuteOfHour);
-                Toast.makeText(this, "Tarea '" + title + "' agendada a las " + timeStr, Toast.LENGTH_LONG).show();
-
-            }, hour, minute, true);
-
-            timePicker.show();
-        });
-
-        builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.cancel());
-        builder.show();
-    }
-
-    private void loadTasks() {
-        Executors.newSingleThreadExecutor().execute(() -> {
-            List<Task> tasks = dbHelper.getTasksByUser(currentUserId);
-            runOnUiThread(() -> {
-                adapter.setTasks(tasks);
-                updateNextTask();
+        if (btnOpenMap != null) {
+            btnOpenMap.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, MapActivity.class);
+                startActivity(intent);
             });
+        }
+
+        if (btnSendEmail != null) {
+            btnSendEmail.setOnClickListener(v -> {
+                Intent emailIntent = new Intent(Intent.ACTION_SEND);
+                emailIntent.setType("message/rfc822");
+                emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[]{"estudiante@ejemplo.com"});
+                emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Recordatorio DaySinc");
+                emailIntent.putExtra(Intent.EXTRA_TEXT, "¡Recuerda completar tus tareas de estudio hoy!");
+                try {
+                    startActivity(Intent.createChooser(emailIntent, "Enviar correo mediante..."));
+                } catch (android.content.ActivityNotFoundException ex) {
+                    Toast.makeText(MainActivity.this, "No hay clientes de correo instalados.", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        if (btnTestNotification != null) {
+            btnTestNotification.setOnClickListener(v -> triggerImmediateTestNotification());
+        }
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    NotificationReceiver.CHANNEL_ID,
+                    "Recordatorios de Actividades",
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Canal oficial de notificaciones DaySinc");
+            channel.enableVibration(true);
+            channel.enableLights(true);
+
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+    }
+
+    private void requestPermissions() {
+        List<String> permissions = new ArrayList<>();
+        permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+
+        ActivityCompat.requestPermissions(this, permissions.toArray(new String[0]), PERMISSION_REQUEST_CODE);
+    }
+
+    private void verifyAndChangeTaskState(Task task, int position, boolean targetState) {
+        if (!targetState) {
+            task.setCompleted(false);
+            taskAdapter.notifyItemChanged(position);
+            return;
+        }
+
+        SharedPreferences prefs = getSharedPreferences("StudyZonePrefs", MODE_PRIVATE);
+        boolean isSet = prefs.getBoolean("zone_set", false);
+
+        if (!isSet) {
+            Toast.makeText(this, "⚠️ Primero debes configurar tu Zona de Actividades en el mapa", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        float savedLat = prefs.getFloat("zone_lat", 0);
+        float savedLng = prefs.getFloat("zone_lng", 0);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Concede permisos de ubicación para verificar la tarea", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+            if (location != null) {
+                float[] results = new float[1];
+                Location.distanceBetween(
+                        location.getLatitude(), location.getLongitude(),
+                        savedLat, savedLng, results
+                );
+
+                float distanceInMeters = results[0];
+                if (distanceInMeters <= 100) {
+                    new AlertDialog.Builder(this)
+                            .setTitle("✅ Verificación de Actividad")
+                            .setMessage("¿Confirmas que realizaste la actividad '" + task.getTitle() + "' en tu Zona de Actividades?")
+                            .setPositiveButton("Sí, confirmar", (dialog, which) -> {
+                                task.setCompleted(true);
+                                taskAdapter.notifyItemChanged(position);
+                                Toast.makeText(this, "🎉 ¡Excelente trabajo! Actividad completada.", Toast.LENGTH_SHORT).show();
+                            })
+                            .setNegativeButton("Cancelar", null)
+                            .show();
+                } else {
+                    new AlertDialog.Builder(this)
+                            .setTitle("🔴 Verificación Fallida")
+                            .setMessage("Debes estar físicamente dentro de tu Zona de Actividades para marcar esta tarea como realizada.\n\nDistancia actual: " + (int) distanceInMeters + " metros.")
+                            .setPositiveButton("Entendido", null)
+                            .show();
+                }
+            } else {
+                Toast.makeText(this, "Obteniendo posición GPS...", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
-    private void scheduleAlarm(String taskTitle, long triggerAtMillis) {
+    private void showTimePickerDialog() {
+        Calendar now = Calendar.getInstance();
+        TimePickerDialog timePickerDialog = new TimePickerDialog(this,
+                (view, hourOfDay, minute) -> {
+                    selectedTimeCalendar = Calendar.getInstance();
+                    selectedTimeCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                    selectedTimeCalendar.set(Calendar.MINUTE, minute);
+                    selectedTimeCalendar.set(Calendar.SECOND, 0);
+                    selectedTimeCalendar.set(Calendar.MILLISECOND, 0);
+
+                    String formattedTime = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute);
+                    btnSelectTime.setText("⏰ Hora: " + formattedTime);
+                },
+                now.get(Calendar.HOUR_OF_DAY),
+                now.get(Calendar.MINUTE),
+                true
+        );
+        timePickerDialog.show();
+    }
+
+    private void addTaskWithReminder() {
+        String taskTitle = etNewTask.getText().toString().trim();
+
+        if (taskTitle.isEmpty()) {
+            Toast.makeText(this, "Escribe una actividad primero", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (selectedTimeCalendar == null) {
+            Toast.makeText(this, "⚠️ Debes seleccionar una hora obligatoria para la actividad", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String timeString = String.format(Locale.getDefault(), "%02d:%02d",
+                selectedTimeCalendar.get(Calendar.HOUR_OF_DAY),
+                selectedTimeCalendar.get(Calendar.MINUTE));
+
+        taskList.add(new Task(taskTitle + " (" + timeString + ")", false));
+        taskAdapter.notifyItemInserted(taskList.size() - 1);
+
+        scheduleNotification5MinutesBefore(taskTitle, selectedTimeCalendar.getTimeInMillis());
+
+        etNewTask.setText("");
+        selectedTimeCalendar = null;
+        btnSelectTime.setText("⏰ Seleccionar Hora *");
+
+        Toast.makeText(this, "✅ Actividad guardada con recordatorio de 5 min antes", Toast.LENGTH_SHORT).show();
+    }
+
+    private void scheduleNotification5MinutesBefore(String title, long timeInMillis) {
+        long notifyTime = timeInMillis - (5 * 60 * 1000);
+
+        if (notifyTime <= System.currentTimeMillis()) {
+            notifyTime = System.currentTimeMillis() + 3000;
+        }
+
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(this, AlarmReceiver.class);
-        intent.putExtra("task_title", taskTitle);
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("title", "⏰ Próxima Actividad (En 5 min)");
+        intent.putExtra("message", "Recuerda hacer tus actividades: " + title);
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 this,
                 (int) System.currentTimeMillis(),
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
         if (alarmManager != null) {
+            AlarmManager.AlarmClockInfo alarmClockInfo = new AlarmManager.AlarmClockInfo(notifyTime, pendingIntent);
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (alarmManager.canScheduleExactAlarms()) {
-                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
-                    } else {
-                        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
-                    }
-                } else {
-                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
-                }
-            } catch (SecurityException e) {
-                e.printStackTrace();
-                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+                alarmManager.setAlarmClock(alarmClockInfo, pendingIntent);
+            } catch (Exception e) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, notifyTime, pendingIntent);
             }
         }
     }
 
-    private void updateNextTask() {
-        Executors.newSingleThreadExecutor().execute(() -> {
-            List<Task> tasks = dbHelper.getTasksByUser(currentUserId);
-            Task nextTask = null;
-            for (Task t : tasks) {
-                if (!t.isCompleted()) {
-                    nextTask = t;
-                    break;
+    private void triggerImmediateTestNotification() {
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("title", "🔔 Recordatorio DaySinc");
+        intent.putExtra("message", "Recuerda hacer tus actividades");
+        sendBroadcast(intent);
+        Toast.makeText(this, "Enviando notificación...", Toast.LENGTH_SHORT).show();
+    }
+
+    private void updateStreakLogic() {
+        SharedPreferences prefs = getSharedPreferences("DaySincPrefs", MODE_PRIVATE);
+        int currentStreak = prefs.getInt("user_streak", 0);
+        String lastDate = prefs.getString("last_streak_date", "");
+        String todayDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+
+        if (!todayDate.equals(lastDate)) {
+            currentStreak++;
+            prefs.edit()
+                    .putInt("user_streak", currentStreak)
+                    .putString("last_streak_date", todayDate)
+                    .apply();
+        }
+
+        if (tvStreak != null) {
+            tvStreak.setText("🔥 Racha Actual: " + currentStreak + " días seguidos");
+        }
+    }
+
+    private void checkStudyZoneStatus() {
+        SharedPreferences prefs = getSharedPreferences("StudyZonePrefs", MODE_PRIVATE);
+        boolean isSet = prefs.getBoolean("zone_set", false);
+
+        if (!isSet) {
+            if (tvNextTask != null) {
+                tvNextTask.setText("📍 Zona de Actividades: No configurada");
+            }
+            return;
+        }
+
+        float savedLat = prefs.getFloat("zone_lat", 0);
+        float savedLng = prefs.getFloat("zone_lng", 0);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+            if (location != null) {
+                float[] results = new float[1];
+                Location.distanceBetween(
+                        location.getLatitude(), location.getLongitude(),
+                        savedLat, savedLng, results
+                );
+
+                float distanceInMeters = results[0];
+                if (distanceInMeters <= 100) {
+                    tvNextTask.setText("🟢 Estás DENTRO de tu Zona de Actividades. ¡Habilitado para trabajar!");
+                } else {
+                    tvNextTask.setText("🔴 Estás FUERA de la Zona de Actividades (" + (int) distanceInMeters + "m de distancia)");
                 }
             }
-            Task finalNextTask = nextTask;
-            runOnUiThread(() -> {
-                if (finalNextTask != null) {
-                    tvNextTask.setText("Siguiente: " + finalNextTask.getTitle() + " (" + finalNextTask.getCategory() + ")");
-                } else {
-                    tvNextTask.setText("Siguiente: Ninguna tarea pendiente");
-                }
-            });
         });
     }
 
-    private void updateStreak(int newStreak) {
-        SharedPreferences prefs = getSharedPreferences("DaySincPrefs", MODE_PRIVATE);
-        prefs.edit().putInt("user_streak_" + currentUserId, newStreak).apply();
-
-        tvStreak.setText("🔥 Racha: " + newStreak + " días (" + currentUserId + ")");
-
-        prefs.edit().putInt("user_streak", newStreak).apply();
-
-        Intent intent = new Intent(this, StreakWidgetProvider.class);
-        intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-        int[] ids = AppWidgetManager.getInstance(getApplication())
-                .getAppWidgetIds(new ComponentName(getApplication(), StreakWidgetProvider.class));
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
-        sendBroadcast(intent);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkStudyZoneStatus();
     }
-    private void sendEmailNotification(String taskTitle) {
-        String userEmail = getIntent().getStringExtra("email");
 
-        if (userEmail == null || userEmail.isEmpty()) {
-            Toast.makeText(this, "No hay un correo registrado para este usuario", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Intent intent = new Intent(Intent.ACTION_SENDTO);
-        intent.setData(android.net.Uri.parse("mailto:" + userEmail));
-        intent.putExtra(Intent.EXTRA_SUBJECT, "🔔 Recordatorio DaySinc - " + taskTitle);
-        intent.putExtra(Intent.EXTRA_TEXT, "Hola " + currentUserId + ",\n\nTe recordamos que tienes pendiente la actividad: '" + taskTitle + "'. ¡Mantén tu racha activa!");
-
-        try {
-            startActivity(Intent.createChooser(intent, "Enviar correo usando:"));
-        } catch (android.content.ActivityNotFoundException ex) {
-            Toast.makeText(this, "No tienes una app de correo configurada", Toast.LENGTH_SHORT).show();
-        }
-    }
-    private void checkAndUpdateDailyStreak() {
-        if (currentUserId == null || currentUserId.equals("invitado") || currentUserId.isEmpty()) {
-            Toast.makeText(this, "Inicia sesión para registrar tu racha", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        SharedPreferences prefs = getSharedPreferences("DaySincPrefs", MODE_PRIVATE);
-
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-        String todayDate = dateFormat.format(new Date());
-
-        String lastStreakDate = prefs.getString("last_streak_date_" + currentUserId, "");
-
-        if (todayDate.equals(lastStreakDate)) {
-            Toast.makeText(this, "¡Tarea completada! Tu racha de hoy ya fue contabilizada. Regresa mañana para incrementarla.", Toast.LENGTH_LONG).show();
-        } else {
-            int currentStreak = prefs.getInt("user_streak_" + currentUserId, 0);
-            int newStreak = currentStreak + 1;
-
-            prefs.edit()
-                    .putInt("user_streak_" + currentUserId, newStreak)
-                    .putString("last_streak_date_" + currentUserId, todayDate)
-                    .apply();
-
-            tvStreak.setText("🔥 Racha: " + newStreak + " días (" + currentUserId + ")");
-
-            Intent intent = new Intent(this, StreakWidgetProvider.class);
-            intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            int[] ids = AppWidgetManager.getInstance(getApplication())
-                    .getAppWidgetIds(new ComponentName(getApplication(), StreakWidgetProvider.class));
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
-            sendBroadcast(intent);
-
-            Toast.makeText(this, "¡Excelente " + currentUserId + "! Racha aumentada a " + newStreak + " días 🔥", Toast.LENGTH_SHORT).show();
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            checkStudyZoneStatus();
         }
     }
 }
