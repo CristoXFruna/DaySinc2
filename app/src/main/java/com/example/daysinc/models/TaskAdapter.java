@@ -19,12 +19,12 @@ import java.util.Locale;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
 
-    private List<Task> tasks = new ArrayList<>();
-    private OnTaskClickListener listener;
-
     public interface OnTaskClickListener {
-        void onTaskCheckChange(Task task, boolean isChecked);
+        void onTaskCheckChanged(Task task, boolean isChecked);
     }
+
+    private List<Task> tasks = new ArrayList<>();
+    private final OnTaskClickListener listener;
 
     public TaskAdapter(OnTaskClickListener listener) {
         this.listener = listener;
@@ -44,19 +44,20 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
 
     @Override
     public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
-        Task currentTask = tasks.get(position);
-        holder.tvTitle.setText(currentTask.getTitle());
+        Task task = tasks.get(position);
+        holder.tvTitle.setText(task.getTitle());
+        holder.cbCompleted.setChecked(task.isCompleted());
 
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        String timeStr = sdf.format(new Date(currentTask.getTimestamp()));
-        holder.tvCategoryTime.setText(currentTask.getCategory() + " • " + timeStr + " hrs");
+        String timeStr = sdf.format(new Date(task.getScheduledTime()));
+        holder.tvTime.setText(timeStr);
 
-        holder.checkBox.setOnCheckedChangeListener(null);
-        holder.checkBox.setChecked(currentTask.isCompleted());
+        holder.cbCompleted.setOnCheckedChangeListener(null);
+        holder.cbCompleted.setChecked(task.isCompleted());
 
-        holder.checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+        holder.cbCompleted.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (listener != null) {
-                listener.onTaskCheckChange(currentTask, isChecked);
+                listener.onTaskCheckChanged(task, isChecked);
             }
         });
     }
@@ -67,14 +68,14 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     }
 
     static class TaskViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitle, tvCategoryTime;
-        CheckBox checkBox;
+        TextView tvTitle, tvTime;
+        CheckBox cbCompleted;
 
         public TaskViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitle = itemView.findViewById(R.id.tvTaskTitle);
-            tvCategoryTime = itemView.findViewById(R.id.tvTaskCategoryTime);
-            checkBox = itemView.findViewById(R.id.checkboxTask);
+            tvTime = itemView.findViewById(R.id.tvTaskTime);
+            cbCompleted = itemView.findViewById(R.id.cbCompleted);
         }
     }
 }

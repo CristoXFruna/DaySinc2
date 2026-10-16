@@ -56,9 +56,9 @@ public class LoginActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         if (success) {
                             Toast.makeText(this, "¡Usuario registrado exitosamente!", Toast.LENGTH_SHORT).show();
-                            navigateToMain(user);
+                            navigateToMain(user, email);
                         } else {
-                            Toast.makeText(this, "El nombre de usuario ya existe o hubo un error", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "El nombre de usuario ya existe", Toast.LENGTH_SHORT).show();
                         }
                     });
                 });
@@ -67,7 +67,7 @@ public class LoginActivity extends AppCompatActivity {
                     boolean isValid = dbHelper.loginUser(user, pass);
                     runOnUiThread(() -> {
                         if (isValid) {
-                            navigateToMain(user);
+                            navigateToMain(user, email);
                         } else {
                             Toast.makeText(this, "Usuario o contraseña incorrectos", Toast.LENGTH_SHORT).show();
                         }
@@ -93,9 +93,10 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
-    private void navigateToMain(String username) {
+    private void navigateToMain(String username, String email) {
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         intent.putExtra("username", username);
+        intent.putExtra("email", email);
         startActivity(intent);
         finish();
     }

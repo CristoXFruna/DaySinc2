@@ -35,8 +35,8 @@
 
         <receiver
             android:name=".models.AlarmReceiver"
-            android:enabled="true"
             android:exported="false" />
+
         <receiver
             android:name=".models.StreakWidgetProvider"
             android:exported="true">

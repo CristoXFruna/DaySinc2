@@ -27,7 +27,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import com.example.daysinc.models.AlarmReceiver;
 import com.example.daysinc.models.StreakWidgetProvider;
 import com.example.daysinc.models.Task;
@@ -75,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
         public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     };
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -84,20 +87,6 @@ public class MainActivity extends AppCompatActivity {
             currentUserId = getIntent().getStringExtra("username");
         }
 
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        if (sensorManager != null) {
-            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        }
-        acceleration = 10f;
-        currentAcceleration = SensorManager.GRAVITY_EARTH;
-        lastAcceleration = SensorManager.GRAVITY_EARTH;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
-            }
-        }
-
         tvStreak = findViewById(R.id.tvStreak);
         tvNextTask = findViewById(R.id.tvNextTask);
         recyclerView = findViewById(R.id.recyclerViewTasks);
@@ -105,10 +94,14 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton btnTestNotification = findViewById(R.id.btnTestNotification);
 
         dbHelper = new DatabaseHelper(this);
-
         SharedPreferences prefs = getSharedPreferences("DaySincPrefs", MODE_PRIVATE);
-        int userStreak = prefs.getInt("user_streak_" + currentUserId, 0);
-        tvStreak.setText("🔥 Racha: " + userStreak + " días (" + currentUserId + ")");
+
+        if (currentUserId == null || currentUserId.equals("invitado") || currentUserId.isEmpty()) {
+            tvStreak.setText("👤 Inicia sesión para ver tu racha");
+        } else {
+            int userStreak = prefs.getInt("user_streak_" + currentUserId, 0);
+            tvStreak.setText("🔥 Racha: " + userStreak + " días (" + currentUserId + ")");
+        }
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -124,10 +117,8 @@ public class MainActivity extends AppCompatActivity {
                                 runOnUiThread(this::updateNextTask);
                             });
 
-                            int updatedStreak = prefs.getInt("user_streak_" + currentUserId, 0) + 1;
-                            updateStreak(updatedStreak);
+                            checkAndUpdateDailyStreak();
 
-                            Toast.makeText(this, "¡Felicidades " + currentUserId + "! Racha aumentada a " + updatedStreak + " días 🔥", Toast.LENGTH_SHORT).show();
                         })
                         .setNegativeButton("Aún no", (dialog, which) -> {
                             task.setCompleted(false);
@@ -148,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         recyclerView.setAdapter(adapter);
+
 
         fabAddTask.setOnClickListener(v -> showCreateTaskDialog());
 
@@ -302,16 +294,59 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
         sendBroadcast(intent);
     }
-    private void sendEmailNotification(String userEmail, String taskTitle) {
+    private void sendEmailNotification(String taskTitle) {
+        String userEmail = getIntent().getStringExtra("email");
+
+        if (userEmail == null || userEmail.isEmpty()) {
+            Toast.makeText(this, "No hay un correo registrado para este usuario", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Intent intent = new Intent(Intent.ACTION_SENDTO);
         intent.setData(android.net.Uri.parse("mailto:" + userEmail));
-        intent.putExtra(Intent.EXTRA_SUBJECT, "🔔 Recordatorio de Actividad - DaySinc");
-        intent.putExtra(Intent.EXTRA_TEXT, "Hola, te recordamos que tienes pendiente tu actividad: '" + taskTitle + "'. ¡No rompas tu racha!");
+        intent.putExtra(Intent.EXTRA_SUBJECT, "🔔 Recordatorio DaySinc - " + taskTitle);
+        intent.putExtra(Intent.EXTRA_TEXT, "Hola " + currentUserId + ",\n\nTe recordamos que tienes pendiente la actividad: '" + taskTitle + "'. ¡Mantén tu racha activa!");
 
         try {
-            startActivity(Intent.createChooser(intent, "Enviar correo con:"));
+            startActivity(Intent.createChooser(intent, "Enviar correo usando:"));
         } catch (android.content.ActivityNotFoundException ex) {
-            Toast.makeText(this, "No hay cliente de correo instalado", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No tienes una app de correo configurada", Toast.LENGTH_SHORT).show();
+        }
+    }
+    private void checkAndUpdateDailyStreak() {
+        if (currentUserId == null || currentUserId.equals("invitado") || currentUserId.isEmpty()) {
+            Toast.makeText(this, "Inicia sesión para registrar tu racha", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        SharedPreferences prefs = getSharedPreferences("DaySincPrefs", MODE_PRIVATE);
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        String todayDate = dateFormat.format(new Date());
+
+        String lastStreakDate = prefs.getString("last_streak_date_" + currentUserId, "");
+
+        if (todayDate.equals(lastStreakDate)) {
+            Toast.makeText(this, "¡Tarea completada! Tu racha de hoy ya fue contabilizada. Regresa mañana para incrementarla.", Toast.LENGTH_LONG).show();
+        } else {
+            int currentStreak = prefs.getInt("user_streak_" + currentUserId, 0);
+            int newStreak = currentStreak + 1;
+
+            prefs.edit()
+                    .putInt("user_streak_" + currentUserId, newStreak)
+                    .putString("last_streak_date_" + currentUserId, todayDate)
+                    .apply();
+
+            tvStreak.setText("🔥 Racha: " + newStreak + " días (" + currentUserId + ")");
+
+            Intent intent = new Intent(this, StreakWidgetProvider.class);
+            intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+            int[] ids = AppWidgetManager.getInstance(getApplication())
+                    .getAppWidgetIds(new ComponentName(getApplication(), StreakWidgetProvider.class));
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+            sendBroadcast(intent);
+
+            Toast.makeText(this, "¡Excelente " + currentUserId + "! Racha aumentada a " + newStreak + " días 🔥", Toast.LENGTH_SHORT).show();
         }
     }
 }
