@@ -1,5 +1,6 @@
-package com.example.daysinc.models;
+package com.example.daysinc.adapters;
 
+import android.graphics.Paint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,72 +11,70 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.daysinc.R;
+import com.example.daysinc.models.Task;
 
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
 
     public interface OnTaskClickListener {
-        void onTaskCheckChanged(Task task, boolean isChecked);
+        void onTaskCheckChanged(Task task, int position, boolean targetState);
     }
 
-    private List<Task> tasks = new ArrayList<>();
+    private final List<Task> taskList;
     private final OnTaskClickListener listener;
 
-    public TaskAdapter(OnTaskClickListener listener) {
+    public TaskAdapter(List<Task> taskList, OnTaskClickListener listener) {
+        this.taskList = taskList;
         this.listener = listener;
-    }
-
-    public void setTasks(List<Task> tasks) {
-        this.tasks = tasks;
-        notifyDataSetChanged();
     }
 
     @NonNull
     @Override
     public TaskViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_task, parent, false);
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_task, parent, false);
         return new TaskViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
-        Task task = tasks.get(position);
+        Task task = taskList.get(position);
         holder.tvTitle.setText(task.getTitle());
-        holder.cbCompleted.setChecked(task.isCompleted());
-
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        String timeStr = sdf.format(new Date(task.getScheduledTime()));
-        holder.tvTime.setText(timeStr);
 
         holder.cbCompleted.setOnCheckedChangeListener(null);
         holder.cbCompleted.setChecked(task.isCompleted());
 
-        holder.cbCompleted.setOnCheckedChangeListener((buttonView, isChecked) -> {
+        if (task.isCompleted()) {
+            holder.tvTitle.setPaintFlags(holder.tvTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+        } else {
+            holder.tvTitle.setPaintFlags(holder.tvTitle.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
+        }
+
+        View.OnClickListener clickListener = v -> {
+            holder.cbCompleted.setChecked(task.isCompleted());
             if (listener != null) {
-                listener.onTaskCheckChanged(task, isChecked);
+                listener.onTaskCheckChanged(task, holder.getAdapterPosition(), !task.isCompleted());
             }
-        });
+        };
+
+        holder.cbCompleted.setOnClickListener(clickListener);
+        holder.itemView.setOnClickListener(clickListener);
     }
 
     @Override
     public int getItemCount() {
-        return tasks.size();
+        return taskList != null ? taskList.size() : 0;
     }
 
     static class TaskViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitle, tvTime;
         CheckBox cbCompleted;
+        TextView tvTitle;
 
         public TaskViewHolder(@NonNull View itemView) {
             super(itemView);
+            cbCompleted = itemView.findViewById(R.id.cbTaskCompleted);
             tvTitle = itemView.findViewById(R.id.tvTaskTitle);
-            tvTime = itemView.findViewById(R.id.tvTaskTime);
-            cbCompleted = itemView.findViewById(R.id.cbCompleted);
         }
     }
 }

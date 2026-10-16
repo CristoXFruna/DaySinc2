@@ -9,6 +9,11 @@ public class Task {
     private boolean isCompleted;
     private String userId;
 
+    public Task(String title, boolean isCompleted) {
+        this.title = title;
+        this.isCompleted = isCompleted;
+    }
+
     public Task(String title, String category, long scheduledTime, boolean isCompleted, String userId) {
         this.title = title;
         this.category = category;
@@ -16,6 +21,16 @@ public class Task {
         this.isCompleted = isCompleted;
         this.userId = userId;
     }
+
+    public Task(int id, String title, String category, long scheduledTime, boolean isCompleted, String userId) {
+        this.id = id;
+        this.title = title;
+        this.category = category;
+        this.scheduledTime = scheduledTime;
+        this.isCompleted = isCompleted;
+        this.userId = userId;
+    }
+
 
     public int getId() {
         return id;
