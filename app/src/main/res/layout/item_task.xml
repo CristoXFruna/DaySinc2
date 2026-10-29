@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Layout de fila para cada elemento individual de la lista de tareas (RecyclerView). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -6,11 +7,13 @@
     android:padding="12dp"
     android:gravity="center_vertical">
 
+    <!-- CheckBox para seleccionar o desmarcar el estado de la tarea -->
     <CheckBox
         android:id="@+id/cbTaskCompleted"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
+    <!-- Título y hora de la tarea -->
     <TextView
         android:id="@+id/tvTaskTitle"
         android:layout_width="0dp"
@@ -19,4 +22,5 @@
         android:layout_marginStart="8dp"
         android:textSize="16sp"
         android:textColor="@android:color/black" />
+
 </LinearLayout>

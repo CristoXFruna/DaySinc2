@@ -12,15 +12,18 @@ import com.example.daysinc.models.User;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Helper de SQLite para la base de datos local. */
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "daysinc_native.db";
     private static final int DATABASE_VERSION = 1;
 
+    /** Constructor de la base de datos. @param context Contexto de la app. */
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
+    /** Crea las tablas de usuarios y tareas. @param db Base de datos SQLite. */
     @Override
     public void onCreate(SQLiteDatabase db) {
         String CREATE_USERS_TABLE = "CREATE TABLE " + TaskContract.UserEntry.TABLE_NAME + " ("
@@ -42,6 +45,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(CREATE_TASKS_TABLE);
     }
 
+    /** Recrea las tablas al actualizar version. @param db BD. @param oldVersion Version vieja. @param newVersion Version nueva. */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         db.execSQL("DROP TABLE IF EXISTS " + TaskContract.UserEntry.TABLE_NAME);
@@ -49,6 +53,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
+    /** Registra un nuevo usuario en la BD. @param username Usuario. @param email Correo. @param password Clave. @return true si guardo. */
     public boolean registerUser(String username, String email, String password) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -61,6 +66,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return result != -1;
     }
 
+    /** Valida el inicio de sesion. @param username Usuario. @param password Clave. @return true si coincide. */
     public boolean loginUser(String username, String password) {
         SQLiteDatabase db = this.getReadableDatabase();
         String selection = TaskContract.UserEntry.COLUMN_USERNAME + " = ? AND " + TaskContract.UserEntry.COLUMN_PASSWORD + " = ?";
@@ -75,6 +81,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return exists;
     }
 
+    /** Inserta una tarea en la BD. @param task Objeto Task. @return true si se guardo. */
     public boolean insertTask(Task task) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -88,6 +95,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return result != -1;
     }
 
+    /** Obtiene tareas de un usuario. @param userId ID del usuario. @return Lista de tareas. */
     public List<Task> getTasksByUser(String userId) {
         List<Task> taskList = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
@@ -117,6 +125,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return taskList;
     }
 
+    /** Cambia el estado completado de una tarea. @param taskId ID tarea. @param isCompleted Estado. @return true si actualizo. */
     public boolean updateTaskState(int taskId, boolean isCompleted) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -129,6 +138,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return count > 0;
     }
 
+    /** Borra una tarea. @param taskId ID tarea. @return true si elimino. */
     public boolean deleteTask(int taskId) {
         SQLiteDatabase db = this.getWritableDatabase();
         String selection = TaskContract.TaskEntry._ID + " = ?";

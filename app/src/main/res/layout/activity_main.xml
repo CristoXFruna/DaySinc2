@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Layout principal de la vista de actividades (MainActivity). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp">
 
+    <!-- Contador de racha actual de días seguidos -->
     <TextView
         android:id="@+id/tvStreak"
         android:layout_width="wrap_content"
@@ -13,6 +15,7 @@
         android:textSize="18sp"
         android:textStyle="bold" />
 
+    <!-- Estado de la Zona de Actividades (GPS) -->
     <TextView
         android:id="@+id/tvNextTask"
         android:layout_width="wrap_content"
@@ -21,19 +24,21 @@
         android:text="📍 Zona de Actividades: No configurada"
         android:textSize="14sp" />
 
-    <!-- Formulario para agregar tarea -->
+    <!-- Formulario para ingresar nueva actividad -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:orientation="vertical">
 
+        <!-- Campo para escribir el nombre de la tarea -->
         <EditText
             android:id="@+id/etNewTask"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Escribe una nueva actividad..." />
 
+        <!-- Botones para seleccionar hora obligatoria y añadir tarea -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -57,6 +62,7 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- Lista recicladora para mostrar las tareas creadas -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvTasks"
         android:layout_width="match_parent"
@@ -64,18 +70,21 @@
         android:layout_weight="1"
         android:layout_marginTop="16dp" />
 
+    <!-- Botón para abrir MapActivity y configurar geocerca -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnOpenMap"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="🗺️ Abrir Mapa de Zona de Actividades" />
 
+    <!-- Botón para enviar un correo de recordatorio -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSendEmail"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="📧 Enviar Recordatorio por Correo" />
 
+    <!-- Botón para probar la notificación push al instante -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnTestNotification"
         android:layout_width="match_parent"

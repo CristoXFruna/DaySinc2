@@ -37,6 +37,7 @@ import org.osmdroid.views.overlay.Polygon;
 
 import java.util.ArrayList;
 
+/** Actividad del mapa interactivo para seleccionar y guardar la Zona de Actividades mediante Geofencing. */
 public class MapActivity extends AppCompatActivity {
 
     private MapView map;
@@ -46,6 +47,7 @@ public class MapActivity extends AppCompatActivity {
     private static final double GEOFENCE_RADIUS_METERS = 100.0;
     private static final String GEOFENCE_ID = "STUDY_ZONE_GEOFENCE";
 
+    /** Configura el mapa OpenStreetMap, eventos de toque y permisos de ubicacion. @param savedInstanceState Estado guardado. */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -103,6 +105,7 @@ public class MapActivity extends AppCompatActivity {
         checkLocationPermissionAndGetLocation();
     }
 
+    /** Dibuja el marcador y el radio visual de 100 metros en el punto seleccionado y guarda coordenadas. @param point Coordenada seleccionada. */
     private void setSelectedZone(GeoPoint point) {
         map.getOverlays().clear();
 
@@ -131,6 +134,7 @@ public class MapActivity extends AppCompatActivity {
         addGeofence(point);
     }
 
+    /** Genera la lista de puntos poligonales para representar la circunferencia del geofence en el mapa. @param center Punto central. @param radiusInMeters Radio en metros. @return Lista de puntos. */
     private ArrayList<GeoPoint> createCirclePoints(GeoPoint center, double radiusInMeters) {
         ArrayList<GeoPoint> circlePoints = new ArrayList<>();
         int numberOfPoints = 36;
@@ -143,6 +147,7 @@ public class MapActivity extends AppCompatActivity {
         return circlePoints;
     }
 
+    /** Revisa permisos de GPS y centra la vista del mapa en la ubicacion actual del usuario. */
     @SuppressLint("MissingPermission")
     private void checkLocationPermissionAndGetLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -171,6 +176,7 @@ public class MapActivity extends AppCompatActivity {
                 });
     }
 
+    /** Registra la geocerca de 100m en la API de GeofencingClient de Google. @param point Punto central de la geocerca. */
     @SuppressLint("MissingPermission")
     private void addGeofence(GeoPoint point) {
         Geofence geofence = new Geofence.Builder()
@@ -198,6 +204,7 @@ public class MapActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> Toast.makeText(this, "Error de geofence: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
+    /** Maneja la respuesta del usuario a la solicitud de permisos de GPS. @param requestCode Codigo peticion. @param permissions Permisos. @param grantResults Resultados. */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -206,12 +213,14 @@ public class MapActivity extends AppCompatActivity {
         }
     }
 
+    /** Reanuda la renderizacion del mapa OpenStreetMap. */
     @Override
     protected void onResume() {
         super.onResume();
         map.onResume();
     }
 
+    /** Pausa la renderizacion del mapa OpenStreetMap. */
     @Override
     protected void onPause() {
         super.onPause();

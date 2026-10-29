@@ -12,10 +12,12 @@ import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
 
+/** Receptor de eventos en segundo plano para construir y mostrar notificaciones. */
 public class NotificationReceiver extends BroadcastReceiver {
 
     public static final String CHANNEL_ID = "daysinc_v2_channel";
 
+    /** Recibe el intent de alarma, crea el canal y muestra la notificacion push. @param context Contexto de la app. @param intent Intent con datos de la notificacion. */
     @SuppressLint("MissingPermission")
     @Override
     public void onReceive(Context context, Intent intent) {

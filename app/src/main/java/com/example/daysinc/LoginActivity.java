@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.concurrent.Executors;
 
+/** Actividad para el inicio de sesion y registro de usuarios. */
 public class LoginActivity extends AppCompatActivity {
 
     private EditText etUser, etEmail, etPassword;
@@ -20,6 +21,7 @@ public class LoginActivity extends AppCompatActivity {
     private boolean isRegisterMode = false;
     private DatabaseHelper dbHelper;
 
+    /** Inicializa componentes y eventos de inicio de sesion y registro. @param savedInstanceState Estado guardado. */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,6 +79,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    /** Alterna la interfaz entre el formulario de registro e inicio de sesion. @param register true para modo registro, false para login. */
     private void setRegisterMode(boolean register) {
         isRegisterMode = register;
         if (etEmail != null) {
@@ -93,6 +96,7 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    /** Navega hacia la actividad principal pasando datos del usuario. @param username Nombre de usuario. @param email Correo del usuario. */
     private void navigateToMain(String username, String email) {
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         intent.putExtra("username", username);

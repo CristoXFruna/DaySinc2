@@ -40,6 +40,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/** Actividad principal para la gestion de tareas, mapa y recordatorios. */
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView rvTasks;
@@ -55,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST_CODE = 2002;
 
+    /** Inicializa la vista principal, canales de notificaciones y eventos de botones. @param savedInstanceState Estado guardado. */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -122,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Crea el canal de notificaciones para Android 8.0 o superior. */
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -140,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Solicita permisos de ubicacion y notificaciones al usuario. */
     private void requestPermissions() {
         List<String> permissions = new ArrayList<>();
         permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
@@ -152,6 +156,7 @@ public class MainActivity extends AppCompatActivity {
         ActivityCompat.requestPermissions(this, permissions.toArray(new String[0]), PERMISSION_REQUEST_CODE);
     }
 
+    /** Verifica por GPS si el usuario esta en la Zona de Actividades para completar una tarea. @param task Objeto Task. @param position Posicion en lista. @param targetState Nuevo estado. */
     private void verifyAndChangeTaskState(Task task, int position, boolean targetState) {
         if (!targetState) {
             task.setCompleted(false);
@@ -208,6 +213,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /** Muestra el selector de hora para asignar a la actividad. */
     private void showTimePickerDialog() {
         Calendar now = Calendar.getInstance();
         TimePickerDialog timePickerDialog = new TimePickerDialog(this,
@@ -228,6 +234,7 @@ public class MainActivity extends AppCompatActivity {
         timePickerDialog.show();
     }
 
+    /** Agrega una nueva actividad a la lista con hora obligatoria y programa la alarma. */
     private void addTaskWithReminder() {
         String taskTitle = etNewTask.getText().toString().trim();
 
@@ -257,6 +264,7 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "✅ Actividad guardada con recordatorio de 5 min antes", Toast.LENGTH_SHORT).show();
     }
 
+    /** Programa una alarma exacta 5 minutos antes del horario indicado. @param title Titulo de la actividad. @param timeInMillis Tiempo objetivo en milisegundos. */
     private void scheduleNotification5MinutesBefore(String title, long timeInMillis) {
         long notifyTime = timeInMillis - (5 * 60 * 1000);
 
@@ -286,6 +294,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Dispara una notificacion de prueba instantanea. */
     private void triggerImmediateTestNotification() {
         Intent intent = new Intent(this, NotificationReceiver.class);
         intent.putExtra("title", "🔔 Recordatorio DaySinc");
@@ -294,6 +303,7 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "Enviando notificación...", Toast.LENGTH_SHORT).show();
     }
 
+    /** Incrementa y guarda la racha diaria del usuario. */
     private void updateStreakLogic() {
         SharedPreferences prefs = getSharedPreferences("DaySincPrefs", MODE_PRIVATE);
         int currentStreak = prefs.getInt("user_streak", 0);
@@ -313,6 +323,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Comprueba la distancia actual respecto a la Zona de Actividades configurada. */
     private void checkStudyZoneStatus() {
         SharedPreferences prefs = getSharedPreferences("StudyZonePrefs", MODE_PRIVATE);
         boolean isSet = prefs.getBoolean("zone_set", false);
@@ -349,12 +360,14 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /** Revisa el estado de la Zona de Actividades al volver a la vista. */
     @Override
     protected void onResume() {
         super.onResume();
         checkStudyZoneStatus();
     }
 
+    /** Maneja la respuesta del usuario a la solicitud de permisos. @param requestCode Codigo peticion. @param permissions Permisos solicitados. @param grantResults Resultados. */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);

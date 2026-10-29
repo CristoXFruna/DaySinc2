@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifiesto principal de DaySinc.
+  Declara permisos de sistema, actividades de la app y receptores de eventos.
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Permisos requeridos -->
+    <!-- Permisos para GPS y Geofencing -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Permisos para envío de notificaciones (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Permisos para programar alarmas y recordatorios exactos -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
@@ -16,6 +24,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DaySinc">
 
+        <!-- Activity inicial / Lanzador de la app -->
         <activity
             android:name=".StartActivity"
             android:exported="true">
@@ -25,6 +34,7 @@
             </intent-filter>
         </activity>
 
+        <!-- Actividades secundarias -->
         <activity
             android:name=".LoginActivity"
             android:exported="false" />
@@ -37,6 +47,7 @@
             android:name=".MapActivity"
             android:exported="false" />
 
+        <!-- Receivers para notificaciones y eventos en segundo plano -->
         <receiver
             android:name=".NotificationReceiver"
             android:exported="false" />
@@ -49,6 +60,7 @@
             android:name=".models.AlarmReceiver"
             android:exported="false" />
 
+        <!-- Receiver para el Widget de la Racha en la pantalla de inicio -->
         <receiver
             android:name=".models.StreakWidgetProvider"
             android:exported="true">

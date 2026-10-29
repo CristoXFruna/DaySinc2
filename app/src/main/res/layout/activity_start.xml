@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Layout para la pantalla de bienvenida / arranque (StartActivity). -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -7,6 +8,7 @@
     android:background="#121212"
     android:padding="24dp">
 
+    <!-- Logo de la aplicación -->
     <ImageView
         android:id="@+id/imgLogo"
         android:layout_width="120dp"
@@ -19,6 +21,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_chainStyle="packed" />
 
+    <!-- Nombre de la aplicación -->
     <TextView
         android:id="@+id/tvAppName"
         android:layout_width="wrap_content"
@@ -33,6 +36,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/imgLogo" />
 
+    <!-- Eslogan publicitario o subtítulo -->
     <TextView
         android:id="@+id/tvSlogan"
         android:layout_width="wrap_content"
@@ -46,6 +50,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvAppName" />
 
+    <!-- Botón para ir a la pantalla de Login -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnGoToLogin"
         android:layout_width="match_parent"

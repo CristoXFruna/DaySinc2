@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Layout para la pantalla del mapa interactivo (MapActivity). -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Vista del mapa interactivo OpenStreetMap (OSMDroid) -->
     <org.osmdroid.views.MapView
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Banner superior con instrucciones para marcar la zona -->
     <TextView
         android:id="@+id/tvMapHint"
         android:layout_width="match_parent"
@@ -22,6 +25,7 @@
         android:textSize="14sp"
         android:textAlignment="center" />
 
+    <!-- Botón para confirmar la zona de actividades guardada y regresar -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnConfirmAndReturn"
         android:layout_width="match_parent"
